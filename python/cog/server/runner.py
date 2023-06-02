@@ -12,7 +12,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry  # type: ignore
 
 from .. import schema
-from .. import types
 from ..files import put_file_to_signed_endpoint
 from ..json import upload_files
 from .eventtypes import Done, Heartbeat, Log, PredictionOutput, PredictionOutputType
@@ -325,7 +324,6 @@ def predict(
     event_handler: PredictionEventHandler,
     should_cancel: threading.Event,
 ) -> schema.PredictionResponse:
-
     # Set up logger context within prediction thread.
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(prediction_id=request.id)
@@ -354,20 +352,7 @@ def _predict(
     initial_prediction = request.dict()
 
     output_type = None
-    input_dict = initial_prediction["input"]
-
-    for k, v in input_dict.items():
-        if isinstance(v, types.URLPath):
-            try:
-                input_dict[k] = v.convert()
-            except requests.exceptions.RequestException as e:
-                tb = traceback.format_exc()
-                event_handler.append_logs(tb)
-                event_handler.failed(error=str(e))
-                log.warn("failed to download url path from input", exc_info=True)
-                return event_handler.response
-
-    for event in worker.predict(input_dict, poll=0.1):
+    for event in worker.predict(initial_prediction["input"], poll=0.1):
         if should_cancel.is_set():
             worker.cancel()
             should_cancel.clear()

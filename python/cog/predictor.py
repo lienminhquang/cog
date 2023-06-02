@@ -15,14 +15,7 @@ from typing_extensions import get_origin, get_args, Annotated
 import yaml
 
 from .errors import ConfigDoesNotExist, PredictorNotSet
-from .types import (
-    Input,
-    Path as CogPath,
-    File as CogFile,
-    URLFile,
-    URLPath,
-    get_filename,
-)
+from .types import Input, Path as CogPath, File as CogFile
 
 
 ALLOWED_INPUT_TYPES = [str, int, float, bool, CogFile, CogPath]
@@ -173,12 +166,9 @@ class BaseInput(BaseModel):
         Cleanup any temporary files created by the input.
         """
         for _, value in self:
-            # Handle URLPath objects specially for cleanup.
-            if isinstance(value, URLPath):
-                value.unlink()
             # Note this is pathlib.Path, which cog.Path is a subclass of. A pathlib.Path object shouldn't make its way here,
             # but both have an unlink() method, so may as well be safe.
-            elif isinstance(value, Path):
+            if isinstance(value, Path):
                 # This could be missing_ok=True when we drop support for Python 3.7
                 if value.exists():
                     value.unlink()
