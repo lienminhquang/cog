@@ -46,6 +46,7 @@ class RedisQueueWorker:
         redis_url: str,
         input_queue: str,
         upload_url: str,
+        upload_api_key: str,
         consumer_id: str,
         predict_timeout: Optional[int] = None,
         report_setup_run_url: Optional[str] = None,
@@ -55,6 +56,7 @@ class RedisQueueWorker:
         self.redis_url = redis_url
         self.input_queue = input_queue
         self.upload_url = upload_url
+        self.upload_api_key = upload_api_key
         self.consumer_id = consumer_id
         self.predict_timeout = predict_timeout
         self.report_setup_run_url = report_setup_run_url
@@ -400,11 +402,14 @@ class RedisQueueWorker:
         def upload_file(fh: io.IOBase) -> str:
             filename = guess_filename(fh)
             content_type, _ = guess_type(filename)
+            headers = {"X-API-Key": self.upload_api_key}
+            if content_type:
+                headers["Content-type"] = content_type
 
             resp = requests.put(
                 ensure_trailing_slash(self.upload_url) + filename,
                 fh,  # type: ignore
-                headers={"Content-type": content_type} if content_type else None,
+                headers=headers,
             )
             resp.raise_for_status()
 
@@ -509,6 +514,7 @@ if __name__ == "__main__":
     parser.add_argument("--redis-url")
     parser.add_argument("--input-queue")
     parser.add_argument("--upload-url")
+    parser.add_argument("--upload-api-key")
     parser.add_argument("--consumer-id")
     parser.add_argument("--model-id")
     parser.add_argument("--predict-timeout", type=int)
@@ -537,6 +543,7 @@ if __name__ == "__main__":
             redis_url=args.redis_url,
             input_queue=args.input_queue,
             upload_url=args.upload_url,
+            upload_api_key=args.upload_api_key,
             consumer_id=args.consumer_id,
             predict_timeout=args.predict_timeout,
             report_setup_run_url=args.report_setup_run_url,
