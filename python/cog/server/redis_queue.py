@@ -400,22 +400,28 @@ class RedisQueueWorker:
 
     def upload_files(self, obj: Any) -> Any:
         def upload_file(fh: io.IOBase) -> str:
-            filename = guess_filename(fh)
-            content_type, _ = guess_type(filename)
-            headers = {"X-API-Key": self.upload_api_key}
-            if content_type:
-                headers["Content-type"] = content_type
+            try:
+                filename = guess_filename(fh)
+                content_type, _ = guess_type(filename)
+                headers = {"x-api-key": self.upload_api_key}
+                if content_type:
+                    headers["Content-type"] = content_type
 
-            resp = requests.put(
-                ensure_trailing_slash(self.upload_url) + filename,
-                fh,  # type: ignore
-                headers=headers,
-            )
-            resp.raise_for_status()
+                resp = requests.put(
+                    ensure_trailing_slash(self.upload_url) + filename,
+                    fh,  # type: ignore
+                    headers=headers,
+                )
 
-            # strip any signing gubbins from the URL
-            final_url = urlparse(resp.url)._replace(query="").geturl()
+                resp.raise_for_status()
 
+                # strip any signing gubbins from the URL
+                final_url = urlparse(resp.url)._replace(query="").geturl()
+            except Exception as e:
+                print(f"Error uploading file: {e}", file=sys.stderr)
+                print(f"URL: {self.upload_url}", file=sys.stderr)
+                print(f"Headers: {headers}", file=sys.stderr)
+                raise e
             return final_url
 
         return upload_files(obj, upload_file)
